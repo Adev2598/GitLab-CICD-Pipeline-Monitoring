@@ -1,0 +1,49 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_IMAGE: "ubuntu:22.04"
+
+build:
+  stage: build
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Building application..."
+    - echo "Running build script"
+    - sleep 3
+    - echo "Build completed successfully"
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 hour
+  only:
+    - main
+    - branches
+
+test:
+  stage: test
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Running unit tests..."
+    - sleep 2
+    - echo "✓ 40 tests passed"
+    - echo "✗ 2 tests failed"
+    - echo "Test execution failed!"
+    - exit 1
+  only:
+    - main
+    - branches
+
+deploy:
+  stage: deploy
+  image: $DOCKER_IMAGE
+  script:
+    - echo "This step will not run due to test failure"
+  environment:
+    name: staging
+    url: http://staging.example.com
+  when: on_success
+  only:
+    - main

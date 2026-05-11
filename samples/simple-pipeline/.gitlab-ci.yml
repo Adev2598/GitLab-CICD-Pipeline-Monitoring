@@ -1,0 +1,48 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_IMAGE: "ubuntu:22.04"
+
+build:
+  stage: build
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Building application..."
+    - echo "Running build script"
+    - sleep 5
+    - echo "Build completed successfully"
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 hour
+  only:
+    - main
+    - branches
+
+test:
+  stage: test
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Running unit tests..."
+    - sleep 3
+    - echo "✓ All 42 tests passed"
+  only:
+    - main
+    - branches
+
+deploy:
+  stage: deploy
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Deploying to staging environment..."
+    - echo "Running deployment script"
+    - sleep 4
+    - echo "✓ Deployment completed"
+  environment:
+    name: staging
+    url: http://staging.example.com
+  only:
+    - main

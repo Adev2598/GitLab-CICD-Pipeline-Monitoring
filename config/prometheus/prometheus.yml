@@ -1,0 +1,58 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'gitlab-monitoring'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files:
+  - '/opt/prometheus/alert_rules.yml'
+
+scrape_configs:
+  # GitLab metrics endpoint
+  - job_name: 'gitlab'
+    static_configs:
+      - targets: ['gitlab:9168']
+    metrics_path: '/metrics'
+    # Collect metrics every 15 seconds
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # GitLab Sidekiq (background jobs) metrics
+  - job_name: 'gitlab-sidekiq'
+    static_configs:
+      - targets: ['gitlab:8082']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # GitLab Workhorse metrics
+  - job_name: 'gitlab-workhorse'
+    static_configs:
+      - targets: ['gitlab:8084']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Node Exporter - system metrics (CPU, memory, disk, network)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # PostgreSQL exporter (if using postgres_exporter)
+  # - job_name: 'postgresql'
+  #   static_configs:
+  #     - targets: ['localhost:9187']
+  #   metrics_path: '/metrics'
+  #   scrape_interval: 15s
+
+  # Redis exporter (if using redis_exporter)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['localhost:9121']
+  #   metrics_path: '/metrics'
+  #   scrape_interval: 15s

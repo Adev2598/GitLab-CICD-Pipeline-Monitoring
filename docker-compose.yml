@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for GitLab
+  postgres:
+    image: postgres:16-alpine
+    container_name: gitlab-postgres
+    environment:
+      POSTGRES_USER: gitlab
+      POSTGRES_PASSWORD: gitlab_password_123
+      POSTGRES_DB: gitlabhq_production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitlab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for GitLab caching and job queue
+  redis:
+    image: redis:7-alpine
+    container_name: gitlab-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # GitLab Community Edition
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab-ce
+    hostname: gitlab.local
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://localhost'
+        gitlab_rails['db_adapter'] = 'postgresql'
+        gitlab_rails['db_host'] = 'postgres'
+        gitlab_rails['db_port'] = '5432'
+        gitlab_rails['db_username'] = 'gitlab'
+        gitlab_rails['db_password'] = 'gitlab_password_123'
+        gitlab_rails['db_database'] = 'gitlabhq_production'
+        gitlab_rails['redis_host'] = 'redis'
+        gitlab_rails['redis_port'] = '6379'
+        gitlab_rails['metrics_enabled'] = true
+        prometheus_monitoring['enable'] = true
+        prometheus['listen_port'] = 9090
+        gitlab_exporter['enable'] = true
+        gitlab_exporter['listen_address'] = '0.0.0.0'
+        gitlab_exporter['listen_port'] = 9168
+        gitlab_exporter['probe_sidekiq'] = true
+        gitlab_workhorse['prometheus_listen_addr'] = '0.0.0.0:8084'
+        sidekiq['metrics_enabled'] = true
+        sidekiq['listen_address'] = '0.0.0.0'
+        sidekiq['listen_port'] = 8082
+        nginx['listen_port'] = 80
+        puma['worker_processes'] = 2
+        puma['worker_timeout'] = 60
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2222:22"
+      - "9090:9090"
+      - "8082:8082"
+      - "8084:8084"
+    volumes:
+      - gitlab_data:/var/opt/gitlab
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/-/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    depends_on:
+      - gitlab
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9100"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+      GF_INSTALL_PLUGINS: ''
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
+  gitlab_data:
+  gitlab_config:
+  gitlab_logs:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: gitlab-monitoring

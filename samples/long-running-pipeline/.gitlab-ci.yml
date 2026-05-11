@@ -1,0 +1,59 @@
+stages:
+  - build
+  - test
+  - integration_test
+  - deploy
+
+variables:
+  DOCKER_IMAGE: "ubuntu:22.04"
+
+build:
+  stage: build
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Building large application (simulated)..."
+    - sleep 10
+    - echo "Build completed"
+  artifacts:
+    paths:
+      - build/
+    expire_in: 2 hours
+  only:
+    - main
+    - branches
+
+test:
+  stage: test
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Running extensive unit tests (500+ tests)..."
+    - sleep 20
+    - echo "✓ All 547 unit tests passed"
+  only:
+    - main
+    - branches
+
+integration_test:
+  stage: integration_test
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Running integration tests with external services..."
+    - sleep 30
+    - echo "✓ All 87 integration tests passed"
+  only:
+    - main
+    - branches
+
+deploy:
+  stage: deploy
+  image: $DOCKER_IMAGE
+  script:
+    - echo "Deploying to production environment..."
+    - echo "Running extensive deployment checks"
+    - sleep 15
+    - echo "✓ Deployment completed successfully"
+  environment:
+    name: production
+    url: http://prod.example.com
+  only:
+    - main

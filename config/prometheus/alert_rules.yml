@@ -1,0 +1,86 @@
+groups:
+  - name: gitlab_alerts
+    interval: 30s
+    rules:
+      # Alert: GitLab CI/CD Pipeline Failure Rate High
+      - alert: GitLabPipelineFailureRateHigh
+        expr: rate(sidekiq_jobs_failed_total[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Sidekiq failure rate"
+          description: "Background job failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      # Alert: GitLab Service Down
+      - alert: GitLabServiceDown
+        expr: up{job="gitlab"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GitLab service is down"
+          description: "GitLab metrics endpoint is unreachable for more than 1 minute"
+
+      # Alert: GitLab Sidekiq Queue Depth High
+      - alert: GitLabSidekiqQueueDepthHigh
+        expr: sidekiq_jobs_enqueued_size > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Sidekiq queue depth"
+          description: "Sidekiq queue depth is {{ $value }} (threshold: 1000)"
+
+      # Alert: Pending CI builds high
+      - alert: GitLabPendingBuildsHigh
+        expr: ci_pending_builds > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of pending CI builds"
+          description: "Pending CI builds: {{ $value }} (threshold: 100)"
+
+  - name: system_alerts
+    interval: 30s
+    rules:
+      # Alert: High CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value | humanize }}% on {{ $labels.instance }}"
+
+      # Alert: High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanize }}% on {{ $labels.instance }}"
+
+      # Alert: Disk Space Low
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat"} / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Available disk space is {{ $value | humanize }}% on {{ $labels.device }}"
+
+      # Alert: High Disk I/O
+      - alert: HighDiskIOWait
+        expr: rate(node_disk_io_time_seconds_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk I/O wait time"
+          description: "Disk I/O wait time is {{ $value | humanize }}s on {{ $labels.device }}"
