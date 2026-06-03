@@ -63,11 +63,11 @@ services:
         puma['worker_processes'] = 2
         puma['worker_timeout'] = 60
     ports:
-      - "80:80"
-      - "443:443"
+      - "8081:80"
+      - "8443:443"
       - "2222:22"
       - "9090:9090"
-      - "8082:8082"
+      - "8181:8082"
       - "8084:8084"
     volumes:
       - gitlab_data:/var/opt/gitlab
@@ -116,7 +116,7 @@ services:
     image: prom/node-exporter:latest
     container_name: node-exporter
     ports:
-      - "9100:9100"
+      - "9101:9100"
     command:
       - '--path.procfs=/host/proc'
       - '--path.rootfs=/'

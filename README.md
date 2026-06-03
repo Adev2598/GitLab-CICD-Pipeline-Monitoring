@@ -205,6 +205,7 @@ bash scripts/cleanup.sh
 ## 📚 Documentation
 
 - **[SETUP_GUIDE.md](docs/SETUP_GUIDE.md)** - Detailed installation and configuration
+- **[START_SERVICES_GUIDE.md](docs/START_SERVICES_GUIDE.md)** - Current commands for starting and verifying services in WSL
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and component details
 - **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
